@@ -9,7 +9,7 @@ from progressbar import AnimatedMarker, Bar, BouncingBar, Counter, ETA, \
     SimpleProgress, Timer
 
 
-def generate_index(bam_input_filename):
+def generate_index(bam_input_filename, index_filename):
 
     number_of_reads = int(subprocess.check_output(["samtools", "view", "-c", bam_input_filename]))
 
@@ -69,8 +69,4 @@ def generate_index(bam_input_filename):
     pbar.finish()        
 
     samfile.close()
-    df.to_csv('index.csv',index=True,header=True)
-
-if __name__ == '__main__':
-    bam = '/home/markus/git/testing/five-prime-counter/bowtie_alignment.bam'
-    generate_index(bam)
+    df.to_csv(index_filename,index=True,header=True)
