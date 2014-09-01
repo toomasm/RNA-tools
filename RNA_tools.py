@@ -42,7 +42,7 @@ def make_argument_parser():
     return parser
 
 import algorithms
-import index_generator_DS
+import index_generator
 
 def process_arguments(args):
 
@@ -66,7 +66,7 @@ def process_arguments(args):
     root_ext_two = os.path.splitext(base_name_two)
 
     # Make genome index name
-    genome_index_name = root_ext_two[0]
+    genome_index_name = 'generated/' + root_ext_two[0]
 
     # Make index name
     index_name = 'generated/' + (root_ext_one[0] + '_index.csv')
@@ -93,9 +93,9 @@ def process_arguments(args):
     # Generate index file
     if args.index:
         if args.align:
-            index_generator_DS.generate_index(aligned_bam_name, index_name)
+            index_generator.generate_index(aligned_bam_name, index_name)
         else:
-            index_generator_DS.generate_index(args.input_one, index_name)
+            index_generator.generate_index(args.input_one, index_name)
 
 
 
