@@ -54,3 +54,14 @@ def sam_to_bam(sam_file, bam_file):
     cmd = "samtools view -Sb  {}  >  {}".format(sam_file, bam_file)
     print('Running external command: {}'.format(cmd))
     output = os.system(cmd)
+
+def check_file_type(file_extension):
+    if file_extension == '.fastq' or file_extension == '.fastq.bz2' or file_extension == '.fastq.gz':
+        type = 'fastq'
+    elif file_extension == '.sam':
+        type = 'sam'
+    elif file_extension == '.bam':
+        type = 'bam'
+    else:
+        type == 'unknown'
+    return type

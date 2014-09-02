@@ -71,19 +71,23 @@ def process_arguments(args):
     # Make index name
     index_name = 'generated/' + (root_ext_one[0] + '_index.csv')
 
+    # Get file type
+
+    file_type = algorithms.check_file_type(root_ext_one[1])
+
     # Created a directory for working files
     if not os.path.exists('generated'):
         os.makedirs('generated')
 
     # Perform trim
-    if root_ext_one[1] == '.fastq':
+    if file_type == 'fastq':
         if args.trim_3 or args.trim_5:
             algorithms.perform_trim(args.input_one, trimmed_output_filename, args.trim_5, args.trim_3)
-    elif root_ext_one[1] != '.fastq' and (args.trim_3 or args.trim_5):
+    elif file_type != 'fastq' and (args.trim_3 or args.trim_5):
         print 'Input file is not a .fastq file'
 
     # Perform alignment
-    if args.align:
+    if args.align and file_type == 'fastq':
         if args.trim_3 or args.trim_5:
             algorithms.perform_alignment(args.input_two, genome_index_name, trimmed_output_filename, aligned_sam_name)
         else:
