@@ -1,0 +1,31 @@
+import os
+import textwrap
+import glob
+
+def index_genome(reference_genome, index_name):
+    cmd = "bowtie-build {0} {1} ".format(reference_genome, )
+    print('Running external command: {}'.format(cmd))
+    output = os.system(cmd)
+
+def perform_alignment(reference_genome, reference_genome_index_base, fastq_filename, output_filename):
+    #bowtie -v 1 -k 7 -p 2 -S --trim5 2 --best --strata MG1655_913.3 MazF2h_PNK.fastq MazF_PNK.sam
+    # Test if index files exist.
+    index_list = glob.glob('{}*'.format(reference_genome_index_base))
+    if len(index_list) != 7:
+        print('No index files found. Generating...')
+        cmd = "bowtie-build {0} {1} ".format(reference_genome, reference_genome_index_base)
+        print('Running external command: {0}'.format(cmd))
+        output = os.system(cmd)
+
+    # Run the alignment.
+    fastq_filename_path = "generated/" + fastq_filename
+    cmd = "bowtie -v 1 -k 7 -p 2 -S --best --strata {0} {1} {2} ".format(reference_genome_index_base, fastq_filename_path, output_filename)
+    print('Running external command: {}'.format(cmd))
+    output = os.system(cmd)
+
+    print('Created alignment file: {}'.format(output_filename))
+
+def sam_to_bam(sam_file, bam_file):
+          
+    sam_filename_path = "alignment/" + sam_file
+    cmd = 'samtools view -b -S {0} > {1}'.format(sam_file, bam_file)
