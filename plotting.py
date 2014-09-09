@@ -1,4 +1,5 @@
-import matplotlib.pylab
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import pandas as pd
 from collections import namedtuple, OrderedDict, Counter
@@ -15,30 +16,33 @@ gene_dic = OrderedDict([('rrsA', GeneInfo(4035153, 4040906, 'P1')),
                         ('rrsG', GeneInfo(2725746, 2731600, 'P6')),
                         ('rrsH', GeneInfo(223408, 229167, 'P7'))])
 
-#df = pd.read_csv('generated/MazF2h_PNK_trimmed_index.csv')
-df = pd.read_csv('Index.csv')
+df = pd.read_csv('generated/MazF2h_PNK_trimmed_index.csv')
 
 selected_column = 'rrsA'
 selected_positions_column = gene_dic[selected_column].column_label
 
 values_list = []
 for value in df[selected_positions_column].dropna():
-	if '+AC0-' in str(value):
-		value = str(value)[4:]
-	values_list.append(value)
+    if '+AC0-' in str(value):
+        value = str(value)[4:]
+    elif '-' in str(value):
+        value = str(value)[1:]
+    values_list.append(int(float(value)))
 
 counter = Counter(values_list)
 x = []
 y = []
-
+print counter
 ptcnt = 0
 for index in range(gene_dic[selected_column].start_pos, gene_dic[selected_column].end_pos):
-    if str(index) in counter:
+    if index in counter:
         ptcnt += 1
-        y.append(counter[str(index)])
+        print ptcnt
+        y.append(counter[index])
     else:
         y.append(0)
-    x.append(index)  
+    x.append(index)
+print all(v == 0 for v in y)  
 
 fig = plt.figure(figsize=(8,6))
 plt.scatter(x, y)
