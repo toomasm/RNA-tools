@@ -16,11 +16,11 @@ def make_argument_parser():
     dpg = parser.add_argument_group('Directory and file parameters')
         
     dpg.add_argument('-i1', '--input-file', 
-                     dest='input_one', default=None, 
+                     dest='input_one', default= 'store_false', required=True,
                      help='Can be either a .fastq, .bam or .csv file.')
     
     dpg.add_argument('-i2', '--second-input-file', 
-                     dest='input_two', default=None, 
+                     dest='input_two', default= 'store_false', 
                      help='optional .fasta file')
 
     dpg.add_argument('-3', '--trim-3\'-end', 
@@ -72,10 +72,9 @@ def process_arguments(args):
     index_name = 'generated/' + (root_ext_one[0] + '_index.csv')
 
     # Get file type
-
     file_type = algorithms.check_file_type(root_ext_one[1])
 
-    # Created a directory for working files
+    # Create a directory for working files
     if not os.path.exists('generated'):
         os.makedirs('generated')
 
@@ -98,8 +97,13 @@ def process_arguments(args):
     if args.index:
         if args.align:
             index_generator.generate_index(aligned_bam_name, index_name)
-        else:
+        elif not args.align and file_type == 'sam':
+            algorithms.sam_to_bam(args.input_one, aligned_bam_name)
+            index_generator.generate_index(aligned_bam_name, index_name)
+        elif not args.align and file_type == 'bam':
             index_generator.generate_index(args.input_one, index_name)
+        else:
+            print 'Input is not a valid alignment file.'
 
 
 

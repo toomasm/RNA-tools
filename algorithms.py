@@ -63,5 +63,5 @@ def check_file_type(file_extension):
     elif file_extension == '.bam':
         type = 'bam'
     else:
-        type == 'unknown'
+        type = 'unknown'
     return type
