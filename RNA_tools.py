@@ -46,6 +46,12 @@ import index_generator
 
 def process_arguments(args):
 
+    # Create a directory for working files
+    #if not os.path.exists('generated'):
+    #   os.makedirs('generated')
+    results_path = os.path.dirname(args.input_one) + '/generated'
+    if not os.path.exists(results_path):
+        os.makedirs(results_path)
     # Get the root file name for first input file
     base_name_one = os.path.basename(args.input_one)
 
@@ -53,10 +59,10 @@ def process_arguments(args):
     root_ext_one = os.path.splitext(base_name_one)
 
     # Make the trimmed reads file output name
-    trimmed_output_filename = os.path.join('generated', (root_ext_one[0] + root_ext_one[1].replace('.', '_trimmed.')))
+    trimmed_output_filename = os.path.join(results_path, (root_ext_one[0] + '_trimmed.fastq'))
 
     # Make aligned output name
-    aligned_sam_name = os.path.join('generated', (root_ext_one[0] + '_aligned.sam'))
+    aligned_sam_name = os.path.join(results_path, (root_ext_one[0] + '_aligned.sam'))
     aligned_bam_name = aligned_sam_name.replace('.sam', '.bam')
 
     # Get the root file name for second input file
@@ -66,17 +72,14 @@ def process_arguments(args):
     root_ext_two = os.path.splitext(base_name_two)
 
     # Make genome index name
-    genome_index_name = 'generated/' + root_ext_two[0]
+    genome_index_name = results_path + '/' + root_ext_two[0]
 
     # Make index name
-    index_name = 'generated/' + (root_ext_one[0] + '_index.csv')
+    index_name = results_path + '/' + (root_ext_one[0] + '_index.csv')
 
     # Get file type
     file_type = algorithms.check_file_type(root_ext_one[1])
 
-    # Create a directory for working files
-    if not os.path.exists('generated'):
-        os.makedirs('generated')
 
     # Perform trim
     if file_type == 'fastq':
