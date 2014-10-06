@@ -1,0 +1,9 @@
+
+*/.ipynb_checkpoints
+*/aligned/*
+*/generated/*
+*/trimmed/*
+
+*.pyc
+*.pdf
+*~

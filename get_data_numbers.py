@@ -19,7 +19,7 @@ def get_plot_data(index_file, requested_mapping_count):
     all_operons = ['rrsA', 'rrsB', 'rrsC', 'rrsD', 'rrsE', 'rrsG', 'rrsH']
     operon_positions = ['P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7']
 
-
+    
     mapping_counts = defaultdict(int)
     for value in index_file['Readname'].dropna():
         for operon in all_operons:

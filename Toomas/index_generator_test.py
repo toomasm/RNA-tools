@@ -28,7 +28,7 @@ def generate_index(bam_input_filename, index_filename):
                             ('rrsH', GeneInfo(223408, 229167, 'P7'))])
 
     plabels = [d.column_label for g, d in gene_dic.items()]
-    columns = gene_dic.keys() + plabels
+    columns = ['Readnames'] + gene_dic.keys() + plabels
 
     samfile = pysam.Samfile(bam_input_filename, 'rb')
     names = set()
@@ -40,7 +40,7 @@ def generate_index(bam_input_filename, index_filename):
          
     names_list = list(names)
 
-    df = pd.DataFrame(index=names_list, columns=columns)
+    df = pd.DataFrame(columns=columns)
 
     widgets = [Bar('>'), ' ', ETA(), ' ', ReverseBar('<')]
     pbar = ProgressBar(widgets=widgets, maxval=number_of_reads).start()
@@ -66,11 +66,8 @@ def generate_index(bam_input_filename, index_filename):
                     if (position > gene_data.start_pos and position < gene_data.end_pos):
                         df[gene][read.qname] = 1
                         df[gene_data.column_label][read.qname] = position_marker
-
     pbar.finish()        
 
     samfile.close()
-    df.index.name = 'Readname'
-    df.reset_index(level=0, inplace=True)
-    df.to_csv(index_filename,index=True,header=True)
+    df.to_csv(index_filename,index=False,header=True)
 

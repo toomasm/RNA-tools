@@ -1,149 +1,166 @@
 from Bio import SeqIO
 import sys
+import pysam
 
 
 
-def five_prime_trimmer(input_filename, output_file, trim_from_5p_end, Flag_3prime):
+def read_trimmer(input_filename, output_file, trim_from_5p_end, Flag_3prime):
     """
-    Program that trims your specifified amount of nucleotides from the 5 prime end of the fastq reads
-    """
-      
-    #The input data path entry and creation of output file for trimmed reads.p
-    data_input = open(input_filename, "r")    
-    output = open(output_file, "w")
+    Program that trims your specified amount of nucleotides from the 5 prime end of the fastq reads.
 
-    #Asks you how much nucleotides would you like to trim from 5 prime end (enter an int) and checks if your entry is valid.
-    try:
-        trimming_number = int(raw_input("How many nucleotides would you like to trim from 5 prime end? Please enter a single number: "))
-    except ValueError:
-        print "This is not a single number!"
-        sys.exit()
-
-    #Just says what the program is about to do. {0} is a placeholder for info behind .format.
-    print "This code will now trim {0} nucleotides from the five prime end of all your reads".format(trimming_number)
-
-    #This code parses fastq file and then iterates over every separate read removing x-nucleotides from the 5 prime end.
-    for rec in SeqIO.parse(input_filename, "fastq"):
-        if trim_from_5p_end >= 1:
-            rec = rec[trimming_number:] #removes needed amount of nucleotides from 5 prime end.
-        if Flag_3prime == True:
-            count = 0
-            for c in rec.seq[::-1]: #Iterates backwards over nucleotides in read.
-                if c == "A": #counts the number of "A"-s at the 3 prime end.
-                    count += 1
-                else:
-                    break
-            if count == 0: #assures that the read wont be deleted if no A-s are at the end.
-                pass
-            else:
-                rec = rec[:-count] #removes nucleotides from 3 prime end. if -count is 0 it deletes the read so it has to be atlest 1.
-        SeqIO.write(rec, output, "fastq")
-    data_input.close()
-    output.close()
-
-    #shows how many reads there were in the input file and how many reads are in the output file. 
-    """
-    num_lines = sum(1 for line in open(path_in))
-    print "Input file has {0} lines".format(num_lines)
-    num_lines = sum(1 for line in open(path_out))
-    print "Output file has {0} lines".format(num_lines)
-    print "code has finished!"
+    This code also allows a step for polyA tail trimming.
+    If Flag "Flag_3prime" is set, it trims all "A" nucleotides from the 3' end of the fastq reads.
+    It removes "A" nucleotides till it reaches a none A nucleotide.
+    If the seq quality of 3' end is of bad quality, it checks the nucleotide following the bad seq quality nucleotides,
+    if it is "A", continue trimming. If not "A"- disregard the read.
+    Exception is made if only one bad quality nucleotide is located at the three prime end.
     """
 
+    #Prints out what operatios the code will perfom.
+    if trim_from_5p_end >= 1 and Flag_3prime == False:
+        print "Trimming {0} nucleotides from 5' end.".format(trim_from_5p_end)
+    elif not trim_from_5p_end >= 1 and Flag_3prime == True:
+        print "Trimming poly A tail from 3' end."
+    elif trim_from_5p_end >= 1 and Flag_3prime == True:
+        print "Trimming {0} nucleotides from 5' end and A nucleotides (possible polyA tail) from 3' end".format(trim_from_5p_end)
 
-def three_prime_trimmer(fastq_file):
-    """
-    Program that trims all "A" nucleotides from the 3 prime end of
-    the fastq reads. It removes "A" nucleotides till it reaches a none
-    A nucleotide.
-
-    """
-
-    #The input data path entry and creation of output file for trimmed reads.
-    path_in = raw_input("Enter the fastq file path ") 
-    #data_input = open(path_in, "r")
-    path_out = raw_input("Enter the output file name ")
-    output = open(path_out, "w")
-
-    #This code at first parses fastq file.
-    #Then it starts to iterate backwards over every characater in the read.
-    #It counts the number of A nucleotides at the end of the read, removes as many from the 3 prime end and writes the read to a new file.
-
-    for rec in SeqIO.parse(path_in, "fastq"):#iterates over reads.
-        count = 0
-        for c in rec.seq[::-1]: #Iterates backwards over nucleotides in read.
-            if c == "A": #counts the number of "A"-s at the 3 prime end.
-                count += 1
+    #Checks the quality of 3' end.
+    def three_prime_quality_assessor(fastq_read):
+        
+        quality =(fastq_read.letter_annotations["phred_quality"])
+        count_quality = 0 #Bad quality nucleoties count in 3' end
+        #Counts how many nucleotides in 3 prime end have low seq quality.
+        for nucleotide_score in quality[::-1]:
+            if nucleotide_score <= 2:
+                count_quality += 1
             else:
                 break
-        if count == 0: #assures that the read wont be deleted if no A-s are at the end.
-            pass
+        return count_quality
+        
+    #Counts the "A" nucleotides in three prime end.    
+    def three_prime_A_counter(fastq_read):
+
+        count_nucleotide = 0  #"A"  nucleotide count in 3' end
+        for c in fastq_read.seq[::-1]: #Iterates backwards over nucleotides in read.
+            if c == "A": #counts the number of "A"-s at the 3 prime end.
+                count_nucleotide += 1
+            else:
+                break
+        return count_nucleotide
+        
+    #Removes "A" nucleotides from the three prime end.
+    def polyA_remover(rec, count_A):
+
+        if count_A == 0: #Assures that the read wont be deleted if no A-s are at the end.
+            rec = rec #No nucleotide is removed and read stays as is.
         else:
-            rec = rec[:-count] #removes nucleotides from 3 prime end. if -count is 0 it deletes the read so it has to be atlest 1.
-        SeqIO.write(rec, output, "fastq")
+            rec = rec[:-count_A] #Removes nucleotides from 3 prime end. If "A" count is 0 it deletes the read so it has to be atleast 1.
 
-    #data_input.close() 
-    output.close()
+        if len(rec) < 20: #If read length after trimming is shorter then 20 makes a flag True to not write the records to output file.
+            too_short_read = bool(True)
+        else:
+            too_short_read = bool(False)
+            
+        return rec, too_short_read
+            
+    #Trims the reads according to input.
+    def trimming(input_filename, output_file, trim_from_5p_end):
+        #Some variables for counting the reads added and removed from.
+        count_reads_added = 0
+        count_reads_not_added = 0
+        count_PolyA_after_badq = 0
+        for rec in SeqIO.parse(input_filename, "fastq"):
+            if trim_from_5p_end >= 1:
+                rec = rec[trim_from_5p_end:] #removes needed amount of nucleotides from 5 prime end.
 
-    num_lines = sum(1 for line in open(path_in))
-    print "Input file has {0} lines".format(num_lines)
-    num_lines = sum(1 for line in open(path_out))
-    print "Output file has {0} lines".format(num_lines)
+            if Flag_3prime == True:
 
+                #Counts how many nucleotides in 3 prime end have low seq quality.
+                count_q = three_prime_quality_assessor(rec)
+                #If seq quality is good commense "A" trimming.
+                if count_q == 0:
+                    #Counts how many "A" nucleotides there are in 3' end.
+                    count_A = three_prime_A_counter(rec)
+                    (rec, do_not_add_read) = polyA_remover(rec, count_A)
 
+                #If more than one nucleotides in the 3' end have a bad seq quality it is impossible to be sure about the polyA tail.
+                #These reads are left out.
+                #If "A" follows the bad quality nucleotides, trim the bad quality nucleotides and all following "A"-s in row.
+                #Save read as shady. 
+                elif count_q >= 1 and (str(rec.seq[-(count_q+7):-(count_q)]) == "AAAAAAA"):
+                    #Trims bad quality nucleotides from three prime end.
+                    rec = rec[:-count_q]
+                    count_PolyA_after_badq += 1
+                    #Counts how many "A" nucleotides there are in 3' end.
+                    count_A = three_prime_A_counter(rec)
+                    (rec, do_not_add_read) = polyA_remover(rec, count_A)
+                else:#Sets the flag for not adding a read if read does not meet any of the previously set conditions.
+                    #For example "A" does not follow a faulty nucleotide.
+                    do_not_add_read = bool(True)
+                    #Checks whether to add read or not. This flag will not add read to output if it only composes of polyA tail.
 
-def three_prime_checker(sam_file):
+                if do_not_add_read == True:
+                    count_reads_not_added += 1
+                    continue
+            count_reads_added += 1        
+            SeqIO.write(rec, output_file, "fastq")
+    
+        print 'Reads written to output: {0}'.format(count_reads_added)
+        print 'Reads disgarded: {0}'.format(count_reads_not_added)
+        print 'Possible reasons: too short length after trimming or bad seq quality in three prime end outside of polyA tail.'
+        print 'Poly A after bad quality nucleotides: {0}'.format(count_PolyA_after_badq)
+        print 'Trimming has finished!'
+
+    with open(input_filename,'r') as input_filename:
+        with open(output_file, 'w') as output_file:
+            trimming(input_filename, output_file, trim_from_5p_end)
+    
+def three_prime_checker(bam_file, ref_genome_fasta, ok_reads_bam_filename, shady_reads_bam_filename):
     """
-    Code that divides the reads of a sam file between two new files according to nucleotide following
+    Code that divides the reads of a SAM file between two new files according to nucleotide following
     the mapped three prime end of the read. If the nucleotide is not A the read is true and is saved in the
     correct reads file. If the nucleotide is A we have no means to know if the read has been correctly trimmed or not
     and it is saved in "shady" reads file.
     """
-
-    #Opens the input files. SAM for mapped reads and fasta for template.
-    sam = pysam.Samfile(raw_input("Enter the sam file path: "), "r")
-    for fasta in SeqIO.parse(raw_input("Enter the path for your template sequence here: "), "fasta"):
-        pass
-    #output = raw_input("Give a name for output sam file: ")
-
-    #output_ok = pysam.Samfile( "ok_" + output, "w", template = sam)
-    #output_shady = pysam.Samfile("shady_" + output, "w", template = sam)
-    #The output files between witch the data is divided.
-    output_ok = pysam.Samfile( "ok_.sam" , "w", template = sam)
-    output_shady = pysam.Samfile("shady_.sam" , "w", template = sam)
-
+    
     """
     Code that divides the three prime seq reads according to nucleotide
     following the three prime end.
     Bacterial genome is circular and code takes this in account.
     If the read is negative and you map a read to start position of the template file then nucleotide downstream is the last
     position in template. If read is positive and
-    its three prime end is the last position of the template, the following nucletodie will be first nucleotide of the template.
+    its three prime end is the last position of the template, the following nucleotide will be first nucleotide of the template.
     """
 
-    for read in sam: 
-        if read.is_reverse == True: #Checks wether the read has positive or negative orientation
-            if read.pos == 0: #Takes into account the circularity of bacterial DNA
-                if fasta[-1] == "A":
-                    output_shady.write(read)
-                else:
-                    output_ok.write(read)
-            elif fasta[read.pos - 1] == "A":
-                output_shady.write(read)
-            else:
-                output_ok.write(read)
+    def is_shady(read, fasta):
+
+        if read.is_reverse:
+            test, indexA, indexB = read.pos == 0, -1, read.pos -1
         else:
-            if (read.pos+ read.qlen) == len(fasta):
-                if fasta[0] == "A":
-                    output_shady.write(read)
-                else:
-                    output_ok.write(read)
-            elif fasta[read.pos + read.qlen] == "A":
-                output_shady.write(read)
-            else:
-                output_ok.write(read)
-    print "3 prime divider has finished!"
+            test, indexA, indexB = (read.pos+ read.qlen) == len(fasta), 0, read.pos + read.qlen
+
+        if test: #Takes into account the circularity of bacterial DNA
+            if str(fasta.seq[indexA]) == "A":
+                return True
+        elif str(fasta.seq[indexB]) == "A":
+            return True
             
-    sam.close()
-    output_ok.close()
-    output_shady.close()
+        return False
+                  
+    for fasta in SeqIO.parse(ref_genome_fasta, "fasta"):
+        pass        
+
+    #Opens the input files. SAM for mapped reads and fasta for template.
+    with pysam.Samfile(bam_file, "rb") as bam:
+        with pysam.Samfile(ok_reads_bam_filename , "wb", template = bam) as output_ok:
+            with pysam.Samfile(shady_reads_bam_filename , "wb", template = bam) as output_shady:
+                for read in bam:
+                    #If read is of expected length write it as ok read.
+                    #Else check for polyA tail on bad nucleotides.
+                    if read.rlen < 99 and is_shady(read, fasta):
+                        output_shady.write(read)
+                    else:
+                        output_ok.write(read)
+    print "3 prime divider has finished!"
+    return True
+
