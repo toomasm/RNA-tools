@@ -58,7 +58,7 @@ def generate_index(bam_input_filename, index_filename, three_prime):
         else: 
             forward_pos = read.pos + 1
             reverse_pos = read.pos + read.rlen
-            
+
         i += 1
         pbar.update(i)
         if read.is_unmapped == False:

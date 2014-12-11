@@ -4,7 +4,7 @@ import argparse
 
 from trimmer import read_trimmer, three_prime_checker
 from align_and_index import perform_alignment, sam_to_bam
-from index_generator import generate_index
+from index_generator_2 import generate_index
 
 def make_argument_parser():
     '''Returns argument parser for this script.
@@ -24,13 +24,15 @@ def make_argument_parser():
                               help='Trims your specifified number (takes INT as argument) of nucleotides from the five prime end of every read')
 
     trimmer_args.add_argument('-3','--trim-all-A-from-3p',
-                              default=None, dest = 'trim_all_A_from_3p', action='store_true',
+                              default=False, dest = 'trim_all_A_from_3p', action='store_true',
                               help='If True trims all "A" nucleotides from the 3 prime end of the fastq reads.\
-                              It removes "A" nucleotides till it reaches a none A nucleotide ')
+                              It removes "A" nucleotides till it reaches a none A nucleotide.\
+                              \
+                              Also if set, tells index generator that it is dealing with three prime mapped reads.')
 
     trimmer_args.add_argument('-c','--three-prime-check',
-                              default=None, dest ='three_prime_check', action='store_true',
-                              help="If True divides the reads of a sam file between two new files according to nucleotide following\
+                              default=False, dest ='three_prime_check', action='store_true',
+                              help="If True divides the reads of a bam file between two new files according to nucleotide following\
                               the mapped three prime end of the read. If the nucleotide is not A the read is true and is saved in the\
                               correct reads file. If the nucleotide is A we have no means to know if the read has been correctly trimmed or not\
                               and it is saved in shady reads file.")
@@ -76,7 +78,7 @@ def trimming_operations(input_filename, root_ext, N_from_5p_to_trim, trim_all_A_
         #Perform the trim operation.
         read_trimmer(input_filename, trimmed_output_filename, N_from_5p_to_trim, trim_all_A_from_3p)
         return trimmed_output_filename
-    elif not N_from_5p_to_trim >= 1  and trim_all_A_from_3p != True:
+    elif  N_from_5p_to_trim == 0  and trim_all_A_from_3p == False:
         print "No trimming of the reads"
         return args.input_filename
 
@@ -155,7 +157,7 @@ def dividing_3prime_seq_aligned_reads(BAM_output_filename, reference_genome, bam
     bam_list.extend([BAM_output_filename_ok, BAM_output_filename_shady])
     return bam_list
     
-def index_operations(root_ext, bam_list, base_name):
+def index_operations(root_ext, bam_list, base_name, three_prime):
     # Makes index files from BAM files.
 
     for BAM in bam_list:
@@ -166,8 +168,8 @@ def index_operations(root_ext, bam_list, base_name):
         else:
             index_filename = BAM.replace('.bam', '_index.csv')
 
-        # Makes an index file from BAM.       
-        generate_index(BAM, index_filename)
+        # Makes an index file from BAM. If three_prime check is True makes the indexer count three prime ends instead of five prime.      
+        generate_index(BAM, index_filename, three_prime)
         print 'Generated index named {0}'.format(os.path.basename(index_filename))
         
 def process_arguments(args):
@@ -222,7 +224,7 @@ def process_arguments(args):
         BAM_output_filename = BAM_maker_operations(SAM_output_filename)
         #Checks if the reads were 3' polyA trimmed.
         #If yes, checks for possible false trimming and divides them to ok and shady reads.
-        if args.trim_all_A_from_3p != None:
+        if args.three_prime_check == True:
             #Output is a list of bamfiles for further processing.
             bam_list = dividing_3prime_seq_aligned_reads(BAM_output_filename, args.reference_genome, bam_list, root_ext)
         else:
@@ -230,11 +232,15 @@ def process_arguments(args):
 
     #If input file is BAM, adds it to bam_list for further processing.
     if input_filetype == '.bam':
-        bam_list.append(args.input_filename)
+        if args.three_prime_check == True:
+            #Output is a list of bamfiles for further processing.
+            bam_list = dividing_3prime_seq_aligned_reads(args.input_filename, args.reference_genome, bam_list, root_ext)
+        else:
+            bam_list.append(args.input_filename)
 
     #Makes index files from BAM files in bam_list if argument for generating the index is set True. 
     if args.index_the_bam == True and bam_list:
-        index_operations(root_ext, bam_list, base_name)
+        index_operations(root_ext, bam_list, base_name, args.trim_all_A_from_3p)
    
 if __name__ == '__main__':
 
