@@ -17,7 +17,6 @@ def generate_index(bam_input_filename, index_filename, three_prime):
 
     widgets = [Bar('>'), ' ', ETA(), ' ', ReverseBar('<')]
     pbar = ProgressBar(widgets=widgets, maxval=number_of_reads).start()
-    i = 0  
 
     GeneInfo = namedtuple('GeneInfo', ['start_pos', 'end_pos'])
 
@@ -33,10 +32,9 @@ def generate_index(bam_input_filename, index_filename, three_prime):
 
     samfile = pysam.Samfile(bam_input_filename, 'rb')
     names = set()
-    for read in samfile:
+    for index, read in enumerate(samfile):
         names.add(read.qname)
-        i += 1
-        pbar.update(i)
+        pbar.update(index)
     pbar.finish()
          
     names_list = list(names)
@@ -46,31 +44,38 @@ def generate_index(bam_input_filename, index_filename, three_prime):
     samfile = pysam.Samfile(bam_input_filename, 'rb')
                
     widgets = [Bar('>'), ' ', ETA(), ' ', ReverseBar('<')]
+
+    print('number_of_reads', number_of_reads)
     pbar = ProgressBar(widgets=widgets, maxval=number_of_reads).start()
-    i = 0
 
-    
-    for read in samfile:
-        
-        if three_prime == True:
-            forward_pos = read.pos + read.rlen
-            reverse_pos = read.pos + 1
-        else: 
-            forward_pos = read.pos + 1
-            reverse_pos = read.pos + read.rlen
+    for index, read in enumerate(samfile):
+        pbar.update(index)
 
-        i += 1
-        pbar.update(i)
+        #if not index % 10000:
+            #print(index, read.seq)
+            #try:
+            #pbar.update(index % 10000)
+            #except Exception as e:
+               # pass
+                
         if read.is_unmapped == False:
-            if read.is_reverse == False:
+            if three_prime == True:
+                forward_pos = read.pos + read.rlen
+                reverse_pos = read.pos + 1
+            else: 
+                forward_pos = read.pos + 1
+                reverse_pos = read.pos + read.rlen
+
+            if not read.is_reverse:
                 position = forward_pos
                 position_marker = forward_pos
-            elif read.is_reverse == True:
+            else:
                 position = reverse_pos
                 position_marker = '-' + str(reverse_pos)
             for gene, gene_data in gene_dic.items():
                 if (position > gene_data.start_pos and position < gene_data.end_pos):
-                    df[gene][read.qname] = position_marker
+                    df.ix[read.qname, gene] = position_marker
+                    #df[gene][read.qname] = position_marker
 
                         
     pbar.finish()
