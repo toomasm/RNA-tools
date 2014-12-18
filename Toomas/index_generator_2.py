@@ -10,7 +10,11 @@ from progressbar import AnimatedMarker, Bar, BouncingBar, Counter, ETA, \
 
 
 def generate_index(bam_input_filename, index_filename, three_prime):
-
+    """ Generates index file that has read names column and rRNA operons columns. If a read is mapped to some rRNA operon the mapped
+    position in that operon will be added to the right operon column for that read. One read can be mapped to several operons. E. coli
+    has 7 rRNA operons.
+    
+    Output is csv file readable by pandas."""
     
         
     number_of_reads = int(subprocess.check_output(["samtools", "view", "-c", bam_input_filename]))
@@ -31,6 +35,9 @@ def generate_index(bam_input_filename, index_filename, three_prime):
     columns = gene_dic.keys()
 
     samfile = pysam.Samfile(bam_input_filename, 'rb')
+    
+    #Make a set of read names. The issue is that we have same reads mapped to different locations and are represented as
+    #different reads in bam file. So for constructing the index file we will need one read name only once.
     names = set()
     for index, read in enumerate(samfile):
         names.add(read.qname)
@@ -39,8 +46,17 @@ def generate_index(bam_input_filename, index_filename, three_prime):
          
     names_list = list(names)
 
-    df = pd.DataFrame(index=names_list, columns=columns)
+    #Generate dictionary for read data. 
+    data_dic = {}
 
+    #Dict keys shall be read names.
+    for n in names:
+        data_dic[n] = ["","","","","","",""]
+
+    #Delete set containing read names.
+    del names
+    print len(data_dic)
+    
     samfile = pysam.Samfile(bam_input_filename, 'rb')
                
     widgets = [Bar('>'), ' ', ETA(), ' ', ReverseBar('<')]
@@ -72,12 +88,16 @@ def generate_index(bam_input_filename, index_filename, three_prime):
             else:
                 position = reverse_pos
                 position_marker = '-' + str(reverse_pos)
+            n= 0
             for gene, gene_data in gene_dic.items():
                 if (position > gene_data.start_pos and position < gene_data.end_pos):
-                    df.ix[read.qname, gene] = position_marker
-                    #df[gene][read.qname] = position_marker
+                    data_dic[read.qname][n] = position_marker
+                n += 1
 
-                        
+    df = pd.DataFrame.from_dict(data_dic, orient='index', dtype=None)
+    df.rename(columns={0: columns[0], 1: columns[1], 2: columns[2], 3: columns[3],4: columns[4],
+                       5: columns[5], 6: columns[6]}, inplace=True)
+                    
     pbar.finish()
     samfile.close()
     df.index.name = 'Readname'

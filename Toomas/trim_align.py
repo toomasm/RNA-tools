@@ -216,7 +216,7 @@ def process_arguments(args):
     
     #If SAM is the input file assignes its path to SAM_output_filename variable.
     if input_filetype == '.sam':
-        SAM_output_filename = input_filename
+        SAM_output_filename = args.input_filename
         #This flag will be used for determining what operations to skip.
 
     if SAM_output_filename:
